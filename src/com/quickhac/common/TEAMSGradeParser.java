@@ -99,7 +99,9 @@ public class TEAMSGradeParser {
 		// get categories
 		final Element $categoriesDiv = doc
 				.getElementById("pssViewGradeBookEntriesDiv");
-		final Elements $categories = doc.getElementsByClass("panelContainer");
+		final Elements $categories = $categoriesDiv.children();
+		//Split <br> for category info later
+		$categories.select("br").append("split");
 		final Elements $gradeInfo = doc.getElementsByClass("studentAttendance")
 				.first().getElementsByTag("tr").get(2).getElementsByTag("td");
 
@@ -116,7 +118,7 @@ public class TEAMSGradeParser {
 		final Category[] cats = new Category[$categories.size()];
 		for (int i = 0; i < cats.length; i++)
 			cats[i] = parseCategory(
-					$categories.get(i).getElementById("QuizzespanelContainer"),
+					$categories.get(i).getElementsByTag("div").first(),
 					courseId);
 
 		// return class grades
@@ -264,29 +266,23 @@ public class TEAMSGradeParser {
 		// weighting scheme we are using, grade calculations should be able to
 		// use the weights
 		// as they are parsed below.
-		
 		//Get category info out of <br> tags
-		$cat.select("br").append(",");
-		System.out.println($cat.getElementsByTag("h1").text());
 		
 		//0=Title, 1=Average, 2=Weight
-		String[] $catInfo = $cat.getElementsByTag("h1").text().split(",");
-
+		String[] $catInfo = $cat.getElementsByTag("h1").text().split("split");
 		// Some teachers don't put their assignments out of 100 points. Check if
 		// this is the case.
 		final boolean is100Pt = $cat.select("td.AssignmentPointsPossible")
 				.size() == 0;
-
+		String categoryTableId = ($catInfo[0].trim().replace(" ", "_") + "BodyTable").trim();
 		// Find all of the assignments using category name since assginment table id is CategoryName + "BodyTable"
-		final Elements $assignments = $cat.getElementById($catInfo[0].trim().replace(" ", "_") + "BodyTable").getElementsByTag("tr");
-
+		final Elements $assignments = $cat.getElementById(categoryTableId).getElementsByTag("tr");
+		
 		// parse category average
 		final Matcher averageMatcher = NUMERIC_REGEX.matcher($catInfo[1]);
-		averageMatcher.find();
 
 		// parse class weight
 		final Matcher weightdMatcher = NUMERIC_REGEX.matcher($catInfo[2]);
-		weightdMatcher.find();
 		// generate category ID
 		final String catId = Hash.SHA1(courseId + '|' + $catInfo[0].trim());
 
@@ -300,8 +296,8 @@ public class TEAMSGradeParser {
 		final Category cat = new Category();
 		cat.id = catId;
 		cat.title = $catInfo[0].trim();
-		cat.weight = Integer.valueOf(weightdMatcher.group(0));
-		cat.average = Numeric.isNumeric(averageMatcher.group(0)) ? Double
+		cat.weight = weightdMatcher.find() ? Integer.valueOf(weightdMatcher.group(0)) : null;
+		cat.average = averageMatcher.find() ? Double
 				.valueOf(averageMatcher.group(0)) : null;
 		cat.bonus = GradeCalc.categoryBonuses(assignments);
 		cat.assignments = assignments;
