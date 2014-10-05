@@ -58,8 +58,6 @@ public class TEAMSGradeParser {
 
 	private GradeSpeedDistrict district;
 
-
-
 	public Course[] parseAverages(final String html) {
 		// set up DOM for parsing
 		final Document doc = Jsoup.parse(html);
@@ -82,60 +80,51 @@ public class TEAMSGradeParser {
 		semParams.semesters = 2;
 
 		final Course[] courses;
-		courses = new Course[$gradeRows.size()-1];
+		courses = new Course[$gradeRows.size() - 1];
 
 		// parse each course (ignore the first row as it is headers)
 		for (int i = 1; i < $metadataRows.size(); i++) {
-			courses[i-1] = parseCourse($metadataRows.get(i),$gradeRows.get(i), semParams);
+			courses[i - 1] = parseCourse($metadataRows.get(i),
+					$gradeRows.get(i), semParams);
 		}
 
 		return courses;
 	}
 
 	public ClassGrades parseClassGrades(final String html,
-			final String urlHash, final int semesterIndex, final int cycleIndex) {
+			final String courseId, final int semesterIndex, final int cycleIndex) {
 		// set up DOM for parsing
 		final Document doc = Jsoup.parse(html);
 
-		// sometimes GradeSpeed decides to return nothing
-		// if there's nothing to see, return nothing
-		final Elements $className = doc.getElementsByClass("ClassName");
-		if ($className.size() == 0)
-			return null;
-
-		// class name cell contains title and period
-		// the matches from this will be ["Class Title", "xx"] (xx = period)
-		final Matcher classNameMatches = CLASS_NAME_REGEX.matcher($className
-				.first().text());
-		classNameMatches.find();
-
-		// get category names
-		final Elements catNames = doc.getElementsByClass("CategoryName");
-		final Elements $categories = doc.getElementsByClass("DataTable");
-		// ignore first table, since it is the overall grades
-		$categories.remove(0);
-
-		// generate course ID
-		final String courseId = Hash.SHA1(Base64
-				.decode(decodeURIComponent(urlHash)));
+		// get categories
+		final Element $categoriesDiv = doc
+				.getElementById("pssViewGradeBookEntriesDiv");
+		final Elements $categories = doc.getElementsByClass("panelContainer");
+		final Elements $gradeInfo = doc.getElementsByClass("studentAttendance")
+				.first().getElementsByTag("tr").get(2).getElementsByTag("td");
 
 		// parse category average
-		final Matcher averageMatcher = NUMERIC_REGEX.matcher(doc
-				.getElementsByClass("CurrentAverage").first().text());
+		final Matcher averageMatcher = NUMERIC_REGEX.matcher($gradeInfo.get(3)
+				.text());
 		averageMatcher.find();
 
+		// parse class period
+		final Matcher periodMatcher = NUMERIC_REGEX.matcher($gradeInfo.get(1)
+				.text());
+		periodMatcher.find();
 		// parse categories
 		final Category[] cats = new Category[$categories.size()];
-		assert (catNames.size() == $categories.size());
 		for (int i = 0; i < cats.length; i++)
-			cats[i] = parseCategory(catNames.get(i), $categories.get(i),
+			cats[i] = parseCategory(
+					$categories.get(i).getElementById("QuizzespanelContainer"),
 					courseId);
 
 		// return class grades
 		final ClassGrades grades = new ClassGrades();
-		grades.title = classNameMatches.group(1);
-		grades.urlHash = urlHash;
-		grades.period = Integer.valueOf(classNameMatches.group(2));
+		// Get name from CLASS ID - Name format
+		grades.title = $gradeInfo.get(0).text().split("-")[1].trim();
+		grades.urlHash = "";
+		grades.period = Integer.valueOf(periodMatcher.group(0));
 		grades.semesterIndex = semesterIndex;
 		grades.cycleIndex = cycleIndex;
 		grades.average = Integer.valueOf(averageMatcher.group(0));
@@ -147,7 +136,8 @@ public class TEAMSGradeParser {
 		return district.parseStudentInfo(Jsoup.parse(html));
 	}
 
-	Course parseCourse(final Element $metadataRow, Element $gradeRow, final SemesterParams semParams) {
+	Course parseCourse(final Element $metadataRow, Element $gradeRow,
+			final SemesterParams semParams) {
 		// find the cells in this row
 		final Elements $metadataCells = $metadataRow.getElementsByTag("td");
 		final Elements $gradeCells = $gradeRow.getElementsByTag("td");
@@ -163,7 +153,7 @@ public class TEAMSGradeParser {
 		for (int i = 0; i < semParams.semesters; i++) {
 			// get cells for the semester
 			final Element[] $semesterCells = new Element[semParams.cyclesPerSemester];
-			final int cellOffset =  i
+			final int cellOffset = i
 					* (semParams.cyclesPerSemester
 							+ (semParams.hasExams ? 1 : 0) + (semParams.hasSemesterAverages ? 1
 								: 0));
@@ -229,7 +219,7 @@ public class TEAMSGradeParser {
 			if (parsedSemAvg.type == GradeValue.TYPE_LETTER)
 				semester.average = parsedSemAvg;
 			else
-				semester.average = GradeCalc.semesterAverage(semester,25);
+				semester.average = GradeCalc.semesterAverage(semester, 25);
 		} else {
 			GradeValue semAvg = new GradeValue();
 			semAvg.type = GradeValue.TYPE_NONE;
@@ -243,11 +233,10 @@ public class TEAMSGradeParser {
 		// Get link
 		final Elements $link = $cell.getElementsByTag("a");
 		boolean isNumber;
-		try{
+		try {
 			Integer.parseInt($link.text());
 			isNumber = true;
-		}
-		catch(NumberFormatException e){
+		} catch (NumberFormatException e) {
 			isNumber = false;
 		}
 		// if there is no link, the cell is empty; return empty values
@@ -267,8 +256,7 @@ public class TEAMSGradeParser {
 		return cycle;
 	}
 
-	Category parseCategory(final Element $catName, final Element $cat,
-			final String courseId) {
+	Category parseCategory(final Element $cat, final String courseId) {
 		// Try to retrieve a weight for each category. Since we have to support
 		// IB-MYP grading,
 		// category weights are not guaranteed to add up to 100%. However,
@@ -276,37 +264,31 @@ public class TEAMSGradeParser {
 		// weighting scheme we are using, grade calculations should be able to
 		// use the weights
 		// as they are parsed below.
-		final Matcher catNameMatches = CATEGORY_NAME_REGEX.matcher($catName
-				.text());
-		if (!catNameMatches.find()) {
-			catNameMatches.usePattern(ALT_CATEGORY_NAME_REGEX);
-			if (!catNameMatches.find())
-				System.err.println("Did not find category name.");
-		}
+		
+		//Get category info out of <br> tags
+		$cat.select("br").append(",");
+		System.out.println($cat.getElementsByTag("h1").text());
+		
+		//0=Title, 1=Average, 2=Weight
+		String[] $catInfo = $cat.getElementsByTag("h1").text().split(",");
 
 		// Some teachers don't put their assignments out of 100 points. Check if
 		// this is the case.
 		final boolean is100Pt = $cat.select("td.AssignmentPointsPossible")
 				.size() == 0;
 
-		// Find all of the rows in this category.
-		final Elements $rows = $cat.getElementsByTag("tr");
+		// Find all of the assignments using category name since assginment table id is CategoryName + "BodyTable"
+		final Elements $assignments = $cat.getElementById($catInfo[0].trim().replace(" ", "_") + "BodyTable").getElementsByTag("tr");
 
-		// Find all of the assignments
-		final Elements $assignments = $cat.select("tr.DataRow, tr.DataRowAlt");
+		// parse category average
+		final Matcher averageMatcher = NUMERIC_REGEX.matcher($catInfo[1]);
+		averageMatcher.find();
 
-		// Find the average cell
-		final Elements $averageRow = $rows.last().getElementsByTag("td");
-		Element $averageCell = null;
-		for (int i = 0; i < $averageRow.size(); i++)
-			if ($averageRow.get(i).text().contains("Average")) {
-				$averageCell = $averageRow.get(i + 1);
-				break;
-			}
-
+		// parse class weight
+		final Matcher weightdMatcher = NUMERIC_REGEX.matcher($catInfo[2]);
+		weightdMatcher.find();
 		// generate category ID
-		final String catId = Hash
-				.SHA1(courseId + '|' + catNameMatches.group(0));
+		final String catId = Hash.SHA1(courseId + '|' + $catInfo[0].trim());
 
 		// parse assignments
 		Assignment[] assignments = new Assignment[$assignments.size()];
@@ -317,10 +299,10 @@ public class TEAMSGradeParser {
 
 		final Category cat = new Category();
 		cat.id = catId;
-		cat.title = catNameMatches.group(1);
-		cat.weight = Integer.valueOf(catNameMatches.group(2));
-		cat.average = Numeric.isNumeric($averageCell.text()) ? Double
-				.valueOf($averageCell.text()) : null;
+		cat.title = $catInfo[0].trim();
+		cat.weight = Integer.valueOf(weightdMatcher.group(0));
+		cat.average = Numeric.isNumeric(averageMatcher.group(0)) ? Double
+				.valueOf(averageMatcher.group(0)) : null;
 		cat.bonus = GradeCalc.categoryBonuses(assignments);
 		cat.assignments = assignments;
 		return cat;
@@ -328,14 +310,14 @@ public class TEAMSGradeParser {
 
 	Assignment parseAssignment(final Element $row, final boolean is100Pt,
 			final String catId) {
-		// get data
-		final String title = getTextByClass($row, "AssignmentName");
-		final String dateDue = getTextByClass($row, "DateDue");
-		final String dateAssigned = getTextByClass($row, "DateAssigned");
-		final String note = getTextByClass($row, "AssignmentNote");
-		final String ptsEarned = getTextByClass($row, "AssignmentGrade");
-		final int ptsPossNum = is100Pt ? 100 : Integer.valueOf(getTextByClass(
-				$row, "AssignmentPointsPossible"));
+		Elements $cells = $row.getElementsByTag("td");
+		// Format - 0= Title 1= pts earned 2=Assign Date 3= Due Date 4 = scale 5=Max Val 6=Count 7=Note
+		final String title =  $cells.get(0).text();
+		final String dateDue =  $cells.get(3).text();
+		final String dateAssigned = $cells.get(2).text();
+		final String note = $cells.get(7).text();
+		final String ptsEarned = $cells.get(1).text();
+		final int ptsPossNum = Integer.parseInt($cells.get(4).text());
 
 		// Retrieve both the points earned and the weight of the assignment.
 		// Some teachers
@@ -365,13 +347,12 @@ public class TEAMSGradeParser {
 					.valueOf(ptsEarned) : null;
 			weight = 1;
 		}
-
 		// turn points earned into grade value
 		final GradeValue grade;
 		if (ptsEarnedNum == null) {
 			grade = new GradeValue(ptsEarned);
 		} else {
-			grade = new GradeValue(ptsEarnedNum);
+			grade = new GradeValue((ptsEarnedNum/ptsPossNum) * 100);
 		}
 
 		// generate the assignment ID
