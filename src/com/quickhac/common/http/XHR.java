@@ -101,10 +101,10 @@ public final class XHR {
 				((HttpPost) req).setEntity(entity);
 				System.out.println("POST " + req.getURI());
 				System.out.print("     with form data: ");
-				try {
-					entity.writeTo(System.out);
-				} catch (IOException e) {
-				}
+//				try {
+//					entity.writeTo(System.out);
+//				} catch (IOException e) {
+//				}
 				System.out.println();
 				
 			}
@@ -201,10 +201,10 @@ public final class XHR {
 				((HttpPost) req).setEntity(entity);
 				System.out.println("POST " + req.getURI());
 				System.out.print("     with form data: ");
-				try {
-					entity.writeTo(System.out);
-				} catch (IOException e) {
-				}
+//				try {
+//					entity.writeTo(System.out);
+//				} catch (IOException e) {
+//				}
 				System.out.println();
 			
 			}
@@ -284,10 +284,10 @@ public final class XHR {
 			((HttpPost) req).setEntity(entity);
 			System.out.println("POST " + req.getURI());
 			System.out.print("     with form data: ");
-			try {
-				entity.writeTo(System.out);
-			} catch (IOException e) {
-			}
+//			try {
+//				entity.writeTo(System.out);
+//			} catch (IOException e) {
+//			}
 			System.out.println();
 			req.setHeader("Cookie", cookie);
 		}

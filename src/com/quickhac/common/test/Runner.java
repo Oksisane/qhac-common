@@ -29,6 +29,7 @@ import ch.boye.httpclientandroidlib.impl.client.DefaultHttpClient;
 
 import com.quickhac.common.TEAMSGradeParser;
 import com.quickhac.common.data.ClassGrades;
+import com.quickhac.common.data.Course;
 import com.quickhac.common.http.ASPNETPageState;
 import com.quickhac.common.http.VerifiedHttpClientFactory;
 import com.quickhac.common.http.XHR;
@@ -51,8 +52,8 @@ public class Runner {
 
 		final String AISDuser = usernameField.getText();
 		final String AISDpass = new String(passwordField.getPassword());
-		//String cstonecookie = getAustinisdCookie(AISDuser, AISDpass);
-		//String teamscookie = getTEAMSCookie(AISDuser, AISDpass, cstonecookie);
+		final String cstonecookie = getAustinisdCookie(AISDuser, AISDpass);
+		final String teamscookie = getTEAMSCookie(AISDuser, AISDpass, cstonecookie);
 		DefaultHttpClient client = new VerifiedHttpClientFactory().getNewHttpClient();
 		final XHR.ResponseHandler getGradesPage = new XHR.ResponseHandler() {
 
@@ -66,10 +67,10 @@ public class Runner {
 			}
 
 		};
-		//String finalcookie = teamscookie + ';' + cstonecookie;
+		String finalcookie = teamscookie + ';' + cstonecookie;
 		//System.out.println(finalcookie);	
 		String gradeBookKey = "gradeBookKey=sectionIndex%253D2%252CgradeTypeIndex%253D1st%2BSix%2BWeeks%252CcourseIndex%253D4435.P100.Y%252CcalendarIndex%253D1%252CgradeIndex%253D95%252CteacherIndex%253DStormberg%255E%2BJohn%252CdayCodeIndex%253DA%2B-%2B04%252ClocIndex%253D018";
-		String html = getTEAMSPage("/selfserve/PSSViewReportCardsAction.do", "", "");
+		String html = getTEAMSPage("/selfserve/PSSViewGradeBookEntriesAction.do", gradeBookKey, finalcookie);
 		System.out.println(html);
 	}
 
@@ -92,42 +93,14 @@ public class Runner {
 
 	public static String getAustinisdCookie(final String AISDuser,
 			final String AISDpass) throws UnknownHostException, IOException {
-		final String user = AISDuser;
-		final String password = AISDpass;
-		final String query = "cn=" + user + "&%5Bpassword%5D=" + password;
-
-		final String host = "my.austinisd.org";
-		final String path = "/WebNetworkAuth/";
-
-		final Socket socket = SSLSocketFactory.getDefault().createSocket(host,
-				443);
-		final PrintWriter writer = new PrintWriter(new OutputStreamWriter(
-				socket.getOutputStream()));
-		writer.println("POST " + path + " HTTP/1.1");
-		writer.println("Host: " + host);
-		writer.println("Accept: */*");
-		writer.println("User-Agent: QHAC");
-		writer.println("Content-Type: application/x-www-form-urlencoded");
-		writer.println("Content-Length: " + query.length());
-		writer.println();
-		writer.println(query);
-		writer.println();
-		writer.flush();
-
+		final String query = "cn=" + AISDuser + "&%5Bpassword%5D=" + AISDpass;
+		
+		final String response = postPageHTTPS("my.austinisd.org", "/WebNetworkAuth/", new String[]{
+				"User-Agent: QHAC",
+				"Accept: */*"
+		}, query);
+		
 		String cstonecookie = null;
-
-		String response = "";
-
-		final BufferedReader reader = new BufferedReader(new InputStreamReader(
-				socket.getInputStream()));
-		final char[] buffer = new char[1024];
-		int len = 0;
-		while ((len = reader.read(buffer)) > 0) {
-			response += new String(buffer, 0, len);
-			if (response.endsWith("\r\n\r\n")) {
-				break;
-			}
-		}
 
 		for (String line : response.split("\n")) {
 			if (line.startsWith("Set-Cookie: CStoneSessionID=")) {
@@ -148,56 +121,77 @@ public class Runner {
 	public static String getTEAMSCookie(final String AISDuser,
 			final String AISDpass, final String CStoneCookie)
 			throws UnknownHostException, IOException {
-		DefaultHttpClient client = new VerifiedHttpClientFactory().getNewHttpClient();
-		final XHR.ResponseHandler getGradesPage = new XHR.ResponseHandler() {
-
-			@Override
-			public void onSuccess(String response) {
-				//System.out.println(response);
-			}
-
-			@Override
-			public void onFailure(Exception e) {
-			}
-
-		};
-		HashMap<String, String> par = new HashMap<String, String>();
-		par.put("userLoginId", AISDuser);
-		par.put("userPassword", AISDpass);
-		Header[] cookiesToSet = XHR.getCookie(client,"https://my-teams.austinisd.org/selfserve/SignOnLoginAction.do",
-				par, CStoneCookie);
-		return cookiesToSet[0].getValue().split(";")[0];
+		final String query = "userLoginId=" + AISDuser + "&userPassword=" + AISDpass;
+		final String response = postPageHTTPS("my-teams.austinisd.org", "/selfserve/SignOnLoginAction.do", new String[]{
+				"Cookie: " + CStoneCookie,
+				"Accept: */*",
+				"User-Agent: QHAC"
+		}, query);
+		
+		System.out.println(response);
+		System.exit(1);
+		
+		
+		return "";
+//		DefaultHttpClient client = new VerifiedHttpClientFactory().getNewHttpClient();
+//		final XHR.ResponseHandler getGradesPage = new XHR.ResponseHandler() {
+//
+//			@Override
+//			public void onSuccess(String response) {
+//				//System.out.println(response);
+//			}
+//
+//			@Override
+//			public void onFailure(Exception e) {
+//			}
+//
+//		};
+//		HashMap<String, String> par = new HashMap<String, String>();
+//		par.put("userLoginId", AISDuser);
+//		par.put("userPassword", AISDpass);
+//		Header[] cookiesToSet = XHR.getCookie(client,"https://my-teams.austinisd.org/selfserve/SignOnLoginAction.do",
+//				par, CStoneCookie);
+//		return cookiesToSet[0].getValue().split(";")[0];
 	}
 	public static String getTEAMSPage(final String path,
 			final String gradeBookKey, String cookie) throws UnknownHostException, IOException {
-		final String host = "my-teams.austinisd.org";
+		return postPageHTTPS("my-teams.austinisd.org", path, new String[]{
+				"Cookie: " + cookie,
+				"Referer: https://my-teams.austinisd.org/selfserve/EntryPointSignOnAction.do?parent=false"
+		}, gradeBookKey);
+	}
+	
+	public static String postPageHTTPS(final String host, final String path, final String[] headers, final String postData) throws UnknownHostException, IOException {
 		final Socket socket = SSLSocketFactory.getDefault().createSocket(host,
 				443);
 		final PrintWriter writer = new PrintWriter(new OutputStreamWriter(
 				socket.getOutputStream()));
 		writer.println("POST " + path + " HTTP/1.1");
 		writer.println("Host: " + host);
-		writer.println("Cookie: " + cookie);
-		writer.println("Cache-Control: no-cache");
+		for (String header : headers) {
+			writer.println(header);
+		}
+		writer.println("Content-Length: " + postData.length());
 		writer.println("Content-Type: application/x-www-form-urlencoded");
 		writer.println();
-		writer.println(gradeBookKey);
+		writer.println(postData);
 		writer.println();
 		writer.flush();
 
-		String response = "";
+		StringBuilder response = new StringBuilder();
 
 		final BufferedReader reader = new BufferedReader(new InputStreamReader(
 				socket.getInputStream()));
 		final char[] buffer = new char[1024];
 		int len = 0;
 		while ((len = reader.read(buffer)) > 0) {
-			response += new String(buffer, 0, len);
-			if (response.endsWith("\r\n\r\n")) {
+			response.append(buffer, 0, len);
+			if (response.length() >= 4 && response.substring(response.length() - 4).equals("\r\n\r\n")) {
 				break;
 			}
 		}
 
-		return response;
+		return response.toString();
+		
 	}
 }
