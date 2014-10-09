@@ -311,10 +311,19 @@ public class TEAMSGradeParser {
 		final String title =  $cells.get(0).text();
 		final String dateDue =  $cells.get(3).text();
 		final String dateAssigned = $cells.get(2).text();
-		final String note = $cells.get(7).text();
+		//TODO: Very weird that we have to catch an exception here... but sometimes array length is only 7
+		String note = "";
+		try{
+			note = $cells.get(7).text();
+		}
+		catch (Exception e){note = "";}
 		final String ptsEarned = $cells.get(1).text();
-		final int ptsPossNum = Integer.parseInt($cells.get(4).text());
-
+		//TODO: Very weird that we have to catch an exception here... but sometimes cell value is "100 2000"
+		int ptsPossNum = 100;
+		try{
+			ptsPossNum = Integer.parseInt($cells.get(4).text());
+		}
+		catch (Exception e){ptsPossNum = 100;}
 		// Retrieve both the points earned and the weight of the assignment.
 		// Some teachers
 		// put in assignments with weights; if so, they look like this:

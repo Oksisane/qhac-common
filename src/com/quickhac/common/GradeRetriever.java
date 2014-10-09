@@ -1,6 +1,8 @@
 package com.quickhac.common;
 
+
 import java.util.HashMap;
+
 
 import ch.boye.httpclientandroidlib.impl.client.DefaultHttpClient;
 import org.jsoup.Jsoup;

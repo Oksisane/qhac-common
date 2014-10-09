@@ -69,7 +69,6 @@ public class Test {
 
 					@Override
 					public void onFailure(Exception e) {
-						// TODO Auto-generated method stub
 						
 					}
 					
