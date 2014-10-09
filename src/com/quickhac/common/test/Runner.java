@@ -1,4 +1,4 @@
-
+package com.quickhac.common.test;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -167,34 +167,38 @@ public class Runner {
 	public static String postPageHTTPS(final String host, final String path, final String[] headers, final String postData) throws UnknownHostException, IOException {
 		final Socket socket = SSLSocketFactory.getDefault().createSocket(host,
 				443);
-		final PrintWriter writer = new PrintWriter(new OutputStreamWriter(
-				socket.getOutputStream()));
-		writer.println("POST " + path + " HTTP/1.1");
-		writer.println("Host: " + host);
-		for (String header : headers) {
-			writer.println(header);
-		}
-		writer.println("Content-Length: " + postData.length());
-		writer.println("Content-Type: application/x-www-form-urlencoded");
-		writer.println();
-		writer.println(postData);
-		writer.println();
-		writer.flush();
-
-		StringBuilder response = new StringBuilder();
-
-		final BufferedReader reader = new BufferedReader(new InputStreamReader(
-				socket.getInputStream()));
-		final char[] buffer = new char[1024];
-		int len = 0;
-		while ((len = reader.read(buffer)) > 0) {
-			response.append(buffer, 0, len);
-			if (response.length() >= 4 && response.substring(response.length() - 4).equals("\r\n\r\n")) {
-				break;
+		try {
+			final PrintWriter writer = new PrintWriter(new OutputStreamWriter(
+					socket.getOutputStream()));
+			writer.println("POST " + path + " HTTP/1.1");
+			writer.println("Host: " + host);
+			for (String header : headers) {
+				writer.println(header);
 			}
+			writer.println("Content-Length: " + postData.length());
+			writer.println("Content-Type: application/x-www-form-urlencoded");
+			writer.println();
+			writer.println(postData);
+			writer.println();
+			writer.flush();
+	
+			StringBuilder response = new StringBuilder();
+	
+			final BufferedReader reader = new BufferedReader(new InputStreamReader(
+					socket.getInputStream()));
+			final char[] buffer = new char[1024];
+			int len = 0;
+			while ((len = reader.read(buffer)) > 0) {
+				response.append(buffer, 0, len);
+				if (response.length() >= 4 && response.substring(response.length() - 4).equals("\r\n\r\n")) {
+					break;
+				}
+			}
+	
+			return response.toString();
+		} finally {
+			socket.close();
 		}
-
-		return response.toString();
 		
 	}
 	public static boolean isNumeric(String str)  
