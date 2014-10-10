@@ -1,16 +1,8 @@
 package com.quickhac.common.test;
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.net.Socket;
 import java.net.URLEncoder;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 
-import javax.net.ssl.SSLSocketFactory;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPasswordField;
@@ -24,10 +16,9 @@ import com.quickhac.common.TEAMSGradeParser;
 import com.quickhac.common.TEAMSGradeRetriever;
 import com.quickhac.common.data.ClassGrades;
 import com.quickhac.common.data.Course;
+import com.quickhac.common.util.Numeric;
 
 public class Runner {
-
-
 	public static void main(String args[]) throws IOException {
 		// Prompt user for username and password
 		final JLabel usernameLabel = new JLabel("Username:");
@@ -63,23 +54,10 @@ public class Runner {
 		final ArrayList<ClassGrades> classGrades = new ArrayList<ClassGrades>();
 		final Elements avalues = Jsoup.parse(averageHtml).getElementById("finalTablebottomRight1").getElementsByTag("a");
 		for (Element e: avalues) {
-			if (isNumeric(e.text())) {
+			if (Numeric.isNumeric(e.text())) {
 				String gradeBookKey = "selectedIndexId=-1&smartFormName=SmartForm&gradeBookKey=" + URLEncoder.encode(e.id(), "UTF-8");
 				classGrades.add( p.parseClassGrades(TEAMSGradeRetriever.getTEAMSPage("/selfserve/PSSViewGradeBookEntriesAction.do", gradeBookKey, finalcookie), "", 0, 0));
 			}
 		}
-	}
-	
-	public static boolean isNumeric(String str)  
-	{  
-	  try  
-	  {  
-	    double d = Double.parseDouble(str);  
-	  }  
-	  catch(NumberFormatException nfe)  
-	  {  
-	    return false;  
-	  }  
-	  return true;  
 	}
 }

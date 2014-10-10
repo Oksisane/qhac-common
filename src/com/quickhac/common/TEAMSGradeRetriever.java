@@ -7,29 +7,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.util.HashMap;
-
 import javax.net.ssl.SSLSocketFactory;
-
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-
-import ch.boye.httpclientandroidlib.impl.client.DefaultHttpClient;
-
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebClientOptions;
-import com.gargoylesoftware.htmlunit.html.HtmlForm;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.html.HtmlPasswordInput;
-import com.gargoylesoftware.htmlunit.html.HtmlTextInput;
-import com.gargoylesoftware.htmlunit.util.Cookie;
-import com.quickhac.common.data.StudentInfo;
-import com.quickhac.common.districts.GradeSpeedDistrict;
-import com.quickhac.common.err.InvalidGradeSpeedOutputException;
-import com.quickhac.common.http.ASPNETPageState;
-import com.quickhac.common.http.VerifiedHttpClientFactory;
-import com.quickhac.common.http.XHR;
 
 public class TEAMSGradeRetriever {
 	public static String getAustinisdCookie(final String AISDuser,
@@ -88,7 +66,7 @@ public class TEAMSGradeRetriever {
 			final String AISDpass, final String CStoneCookie)
 			throws UnknownHostException, IOException {
 		final String query = "userLoginId=" + AISDuser + "&userPassword=" + AISDpass;
-		final String response = postPageHTTPS("my-teams.austinisd.org", "/selfserve/SignOnLoginAction.do", new String[]{
+		postPageHTTPS("my-teams.austinisd.org", "/selfserve/SignOnLoginAction.do", new String[]{
 				"Cookie: " + CStoneCookie,
 				"Accept: */*",
 				"User-Agent: QHAC"
@@ -99,7 +77,6 @@ public class TEAMSGradeRetriever {
 			final String gradeBookKey, String cookie) throws UnknownHostException, IOException {
 		return postPageHTTPS("my-teams.austinisd.org", path, new String[]{
 				"Cookie: " + cookie,
-				"Referer: https://my-teams.austinisd.org/selfserve/EntryPointSignOnAction.do?parent=false"
 		}, gradeBookKey);
 	}
 	
